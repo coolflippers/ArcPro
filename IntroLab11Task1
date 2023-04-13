@@ -1,0 +1,102 @@
+import arcpy
+arcpy.env.workspace = r"H:\Documents\ArcGIS\Projects\MyProject\MyProject.gdb"
+arcpy.management.Copy(r"H:\Downloads\Lab11Data\Lab11Data\Task1.gdb\Keweenaw", "Task1Easy","FeatureDataset")
+arcpy.env.workspace = r"H:\Documents\ArcGIS\Projects\MyProject\MyProject.gdb\Task1Easy"
+arcpy.analysis.Intersect([
+    arcpy.analysis.Select("hydro", "A0_NotSuperior","FCC = 'H21' Or FCC = 'H22' Or  FCC = 'H23' Or FCC = 'H24' Or FCC = 'H25' Or FCC = 'H26'"),
+    arcpy.analysis.Select("MCD","A1_Grant","NAME = 'Grant'")
+    ],
+    "A2_Nonshore")
+arcpy.management.CalculateGeometryAttributes(
+    in_features= "A2_Nonshore",
+    geometry_property= "Km LENGTH",
+    length_unit= "KILOMETERS"
+    )
+arcpy.management.AddField("A2_Nonshore","NullPlaceholder","LONG")
+arcpy.analysis.Statistics("A2_Nonshore",r"H:\Documents\ArcGIS\Projects\MyProject\MyProject.gdb\A3_NonshoreSum","Km SUM","NullPlaceholder")
+arcpy.analysis.Intersect([
+    "A1_Grant",
+    arcpy.analysis.Select("hydropoly", "B0_Lakes","TYPE = 'lake'")
+    ],
+    "B1_GrantLakes")
+arcpy.management.CalculateGeometryAttributes(
+    in_features= "B1_GrantLakes",
+    geometry_property= "HA AREA",
+    area_unit= "HECTARES"
+    )
+arcpy.management.AddField("B1_GrantLakes","NullPlaceholder","LONG")
+arcpy.analysis.Statistics("B1_GrantLakes",r"H:\Documents\ArcGIS\Projects\MyProject\MyProject.gdb\B2_LakesGrantSum","HA SUM","NullPlaceholder")
+arcpy.analysis.Select("hydro","C0_Riverstream","FCC = 'H31' Or FCC = 'H32' Or  FCC = 'H41' Or  FCC = 'H42' Or FCC = 'H43' Or FCC = 'H44' Or FCC = 'H47'")
+arcpy.analysis.Select("allroads","C1_Highway","FCC = 'A21' Or FCC = 'A22' Or  FCC = 'A23' Or  FCC = 'A24' Or FCC = 'A25' Or FCC = 'A26' Or FCC = 'A29' Or FCC = 'A31'")
+arcpy.analysis.Clip("C0_Riverstream","A1_Grant","C2_GrantRiverstream")
+arcpy.analysis.Clip("C1_Highway","A1_Grant","C3_GrantHighway")
+arcpy.analysis.Intersect([
+    "C2_GrantRiverstream",
+    "C3_GrantHighway",
+    ],
+    "C4_HighwayRiverstreamIntersect",
+    output_type= "POINT")
+arcpy.MultipartToSinglepart_management("C4_HighwayRiverstreamIntersect","C5_HwyRvstCheck")
+arcpy.analysis.Buffer("C1_Highway","D00_HwyBuffer100m","100 Meters",
+    dissolve_option= "ALL")
+arcpy.analysis.Buffer("allroads","D01_AllroadsBuffer40m","40 Meters",
+    dissolve_option= "ALL")
+arcpy.analysis.Buffer("C0_Riverstream","D02_RvstBuffer250m","250 Meters",
+    dissolve_option= "ALL")
+arcpy.analysis.Buffer("B0_Lakes","D03_LakesBuffer800m","800 Meters",
+    dissolve_option= "ALL")
+arcpy.analysis.Buffer("NWI","D04_NWIBuffer50m","50 Meters",
+    dissolve_option= "ALL")
+arcpy.management.Merge([
+    "D00_HwyBuffer100m",
+    "D01_AllroadsBuffer40m",
+    "D04_NWIBuffer50m"
+    ],
+    "D05_RoadNWIMerge"
+    )
+arcpy.analysis.Intersect([
+    "D02_RvstBuffer250m",
+    "D03_LakesBuffer800m"
+    ],
+    "D06_RvstLakeIntersect"
+)
+arcpy.analysis.Erase("A1_Grant","D05_RoadNWIMerge","D07_GrantErase")
+arcpy.analysis.Clip("D07_GrantErase","D06_RvstLakeIntersect","D08_GrantCutter")
+arcpy.analysis.Clip("LULC_1978","D08_GrantCutter","D09_LULCCriteria")
+arcpy.management.CalculateGeometryAttributes(
+    in_features= "D09_LULCCriteria",
+    geometry_property= "HA AREA",
+    area_unit= "HECTARES"
+    )
+arcpy.management.AddField("D09_LULCCriteria","NullPlaceholder","LONG")
+arcpy.analysis.Statistics("D09_LULCCriteria",r"H:\Documents\ArcGIS\Projects\MyProject\MyProject.gdb\D10_LULCTotalHectares","HA SUM","NullPlaceholder")
+arcpy.analysis.Statistics("D09_LULCCriteria",r"H:\Documents\ArcGIS\Projects\MyProject\MyProject.gdb\E0_LandClass","HA SUM","LABEL3")
+arcpy.conversion.TableToExcel(r"H:\Documents\ArcGIS\Projects\MyProject\MyProject.gdb\E0_LandClass",
+    r"H:\Documents\ArcGIS\Projects\MyProject\Task1Q5.xlsx")
+arcpy.analysis.MultipleRingBuffer("stroads","F0_MultiBuf",[
+    75,
+    150,
+    225,
+    300],
+    "feet")
+arcpy.analysis.Intersect([
+    "F0_MultiBuf",
+    "NWI"
+    ],
+    "F1_RoadsNWI"
+    )
+arcpy.management.CalculateGeometryAttributes(
+    in_features= "F1_RoadsNWI",
+    geometry_property= "AC AREA",
+    area_unit= "ACRES"
+    )
+arcpy.management.CalculateGeometryAttributes(
+    in_features= "F1_RoadsNWI",
+    geometry_property= "HA AREA",
+    area_unit= "HECTARES"
+    )
+arcpy.analysis.Statistics("F1_RoadsNWI",r"H:\Documents\ArcGIS\Projects\MyProject\MyProject.gdb\F2_TypeRings",
+    "AC SUM;HA SUM",
+    "WETLAND_TY;distance")
+arcpy.conversion.TableToExcel(r"H:\Documents\ArcGIS\Projects\MyProject\MyProject.gdb\F2_TypeRings",
+    r"H:\Documents\ArcGIS\Projects\MyProject\Task1Q6.xlsx")
