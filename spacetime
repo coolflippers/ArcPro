@@ -1,0 +1,80 @@
+import arcpy
+arcpy.env.workspace = r"C:\Users\jasherer\.0\space_time_cube\space_time_cube.gdb"
+arcpy.management.Merge([
+    arcpy.conversion.RasterToPoint("precip_jan_utm","Climate//A00_JanuaryVectorPrecip"),
+    arcpy.conversion.RasterToPoint("precip_feb_utm","Climate//A01_FebruaryVectorPrecip"),
+    arcpy.conversion.RasterToPoint("precip_mar_utm","Climate//A02_MarchVectorPrecip"),
+    arcpy.conversion.RasterToPoint("precip_apr_utm","Climate//A03_AprilVectorPrecip"),
+    arcpy.conversion.RasterToPoint("precip_may_utm","Climate//A04_MayVectorPrecip"),
+    arcpy.conversion.RasterToPoint("precip_jun_utm","Climate//A05_JuneVectorPrecip"),
+    arcpy.conversion.RasterToPoint("precip_jul_utm","Climate//A06_JulyVectorPrecip"),
+    arcpy.conversion.RasterToPoint("precip_aug_utm","Climate//A07_AugustVectorPrecip"),
+    arcpy.conversion.RasterToPoint("precip_sep_utm","Climate//A08_SeptemberVectorPrecip"),
+    arcpy.conversion.RasterToPoint("precip_oct_utm","Climate//A09_OctoberVectorPrecip"),
+    arcpy.conversion.RasterToPoint("precip_nov_utm","Climate//A10_NovemberVectorPrecip"),
+    arcpy.conversion.RasterToPoint("precip_dec_utm","Climate//A11_DecemberVectorPrecip")],
+    "B_2010VectorPrecip",
+    add_source= "ADD_SOURCE_INFO")
+arcpy.env.workspace = r"C:\Users\jasherer\.0\space_time_cube\space_time_cube.gdb\Climate"
+codeblock = """
+def output(input):
+    if 'Jan' in input:
+        result=40179
+    elif 'Feb' in input:
+        result=40210
+    elif 'Mar' in input:
+        result=40238
+    elif 'Apr' in input:
+        result=40269
+    elif 'May' in input:
+        result=40299
+    elif 'Jun' in input:
+        result=40330
+    elif 'Jul' in input:
+        result=40360
+    elif 'Aug' in input:
+        result=40391
+    elif 'Sep' in input:
+        result=40422
+    elif 'Oct' in input:
+        result=40452
+    elif 'Nov' in input:
+        result=40483
+    elif 'Dec' in input:
+        result=40513
+    else:
+        result=0
+    return result
+"""
+arcpy.management.CalculateField("B_2010VectorPrecip",
+"Date",
+"output(!MERGE_SRC!)",
+"PYTHON3",
+codeblock,
+"DATE")
+arcpy.stpm.CreateSpaceTimeCube("B_2010VectorPrecip",
+    r"C:\Users\jasherer\.0\space_time_cube\C_SpaceTimeCube.nc",
+    "Date",'',
+    "1 Months",
+    "REFERENCE_TIME",
+    "1/1/2010",
+    "1 Kilometers",
+    "grid_code MAX SPATIAL_NEIGHBORS",
+    "FISHNET_GRID")
+arcpy.stpm.EmergingHotSpotAnalysis(
+    r"C:\Users\jasherer\.0\space_time_cube\C_SpaceTimeCube.nc",
+    "GRID_CODE_MAX_SPATIAL_NEIGHBORS",
+    "D_HotSpot",'',
+    1,'',
+    "FIXED_DISTANCE",'',
+    "ENTIRE_CUBE")
+arcpy.stpm.VisualizeSpaceTimeCube2D(
+    r"C:\Users\jasherer\.0\space_time_cube\C_SpaceTimeCube.nc",
+    "GRID_CODE_MAX_SPATIAL_NEIGHBORS",
+    "HOT_AND_COLD_SPOT_TRENDS",
+    "E_2D")
+arcpy.stpm.VisualizeSpaceTimeCube3D(
+    r"C:\Users\jasherer\.0\space_time_cube\C_SpaceTimeCube.nc",
+    "GRID_CODE_MAX_SPATIAL_NEIGHBORS",
+    "HOT_AND_COLD_SPOT_RESULTS",
+    "F_3D")
