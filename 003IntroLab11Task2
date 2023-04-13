@@ -1,0 +1,26 @@
+import arcpy
+arcpy.env.workspace = r"H:\Documents\ArcGIS\Projects\MyProject\MyProject.gdb"
+arcpy.management.Copy(r"H:\Downloads\Lab11Data\Lab11Data\Task2.gdb\Michigan", "Task2Easy","FeatureDataset")
+arcpy.env.workspace = r"H:\Documents\ArcGIS\Projects\MyProject\MyProject.gdb\Task2Easy"
+arcpy.analysis.Buffer(
+    in_features= arcpy.analysis.Select("State_Roads_mi", "A0_Highways","FCC = 'A11' Or FCC = 'A12' Or  FCC = 'A13' Or FCC = 'A14' Or FCC = 'A16'"),
+    out_feature_class= "A1_10miBuffer",
+    buffer_distance_or_field= "10 Miles",
+    dissolve_option= "ALL"
+    )
+arcpy.analysis.Select("Cities_mi","A2_20kCities","POP2007 > 20000")
+arcpy.analysis.Erase("A2_20kCities","A1_10miBuffer","A3_20kCitiesGt10mi")
+arcpy.analysis.Buffer("CriticalDunes","C0_1miBuffer","1 Miles",dissolve_option="ALL")
+arcpy.analysis.Clip("Cities_mi","C0_1miBuffer","C1_CitiesDunes1mi")
+arcpy.management.AddField("C1_CitiesDunes1mi","NullPlaceholder","LONG")
+arcpy.analysis.Statistics("C1_CitiesDunes1mi",r"H:\Documents\ArcGIS\Projects\MyProject\MyProject.gdb\F0_SumDuneCities","POP2007 SUM","NullPlaceholder")
+arcpy.analysis.Intersect([
+    arcpy.analysis.Select("Cities_mi", "G0_Cities25to35k","POP2007 > 25000 And POP2007 < 35000"),
+    arcpy.analysis.Select("Counties_mi","G1_Counties250k","POP2010>250000")
+    ],
+    "G2_CityCountyIntersect")
+arcpy.management.Dissolve("G2_CityCountyIntersect",
+    "H0_CityCountyDissolve",
+    "NAME", "NAME_1 CONCATENATE", "MULTI_PART", "DISSOLVE_LINES", '')
+arcpy.conversion.TableToExcel("H0_CityCountyDissolve",
+    r"H:\Documents\ArcGIS\Projects\MyProject\Task2Final2Answers.xlsx")
